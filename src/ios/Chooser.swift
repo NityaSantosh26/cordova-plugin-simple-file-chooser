@@ -1,7 +1,6 @@
 import UIKit
 import MobileCoreServices
 import Foundation
-import Cordova
 
 @objc(Chooser)
 class Chooser : CDVPlugin {
@@ -17,7 +16,7 @@ class Chooser : CDVPlugin {
 		let picker = UIDocumentPickerViewController(documentTypes: utis, in: .import)
 		picker.delegate = self
         if #available(iOS 11.0, *) {
-            picker.allowsMultipleSelection = true
+            picker.allowsMultipleSelection = false
         }
 
 		self.viewController.present(picker, animated: true, completion: nil)
