@@ -1,5 +1,5 @@
 module.exports = {
-    getFiles: function (accept, successCallback, failureCallback) {
+    getFiles: function (accept, allowMultipleSelection = false, successCallback, failureCallback) {
         var result = new Promise(function (resolve, reject) {
             cordova.exec(
                 function (json) {
@@ -16,6 +16,7 @@ module.exports = {
                     (typeof accept === 'string'
                         ? accept.replace(/\s/g, '')
                         : undefined) || '*/*',
+                    allowMultipleSelection
                 ]
             );
         });

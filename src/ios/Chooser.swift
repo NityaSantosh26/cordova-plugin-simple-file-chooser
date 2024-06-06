@@ -5,18 +5,20 @@ import Foundation
 @objc(Chooser)
 class Chooser : CDVPlugin {
 	var commandCallback: String?
-    
+    // Define a structure to hold file information
     struct FileInfo: Codable {
         let mediaType: String
         let name: String
         let uri: String
      }
 
-	func callPicker (utis: [String]) {
+	// Function to call the document picker with specified UTIs and multiple selection option
+    func callPicker (utis: [String], allowMultipleSelection: Bool) {
 		let picker = UIDocumentPickerViewController(documentTypes: utis, in: .import)
 		picker.delegate = self
+		// Set the allowsMultipleSelection property based on the passed parameter
         if #available(iOS 11.0, *) {
-            picker.allowsMultipleSelection = false
+            picker.allowsMultipleSelection = allowMultipleSelection
         }
 
 		self.viewController.present(picker, animated: true, completion: nil)
@@ -38,8 +40,14 @@ class Chooser : CDVPlugin {
 
 		return "application/octet-stream"
 	}
+    
+	// Moves the file to tmp directory whose contents can be purged by OS when app is inactive
+    func moveFileToTMP(at srcURL: URL, to destURL: URL) throws {
+        let fileManager = FileManager.default;
+        try fileManager.moveItem(at: srcURL, to: destURL)
+    }
 
-	func documentWasSelected (urls: [URL]) {
+    func documentWasSelected (urls: [URL]) {
 		var error: NSError?
         let coordinator = NSFileCoordinator();
         var results: [FileInfo] = [];
@@ -49,10 +57,24 @@ class Chooser : CDVPlugin {
                 options: [],
                 error: &error
             ) { newURL in
+                var finalURL = newURL
+                
+				//Gets the destination directory using the existing directory
+                let destDirectory = newURL.deletingLastPathComponent().deletingLastPathComponent()
+                // destination URL to move the file
+				let destURL = destDirectory.appendingPathComponent(newURL.lastPathComponent)
+                    
+                do {
+                    try moveFileToTMP(at: newURL, to: destURL)
+                    finalURL = destURL
+                } catch {
+                    self.sendError("Failed to moved file: \(error.localizedDescription)")
+                }
+                
                 let result = FileInfo(
-                    mediaType: self.detectMimeType(newURL),
-                    name: newURL.lastPathComponent,
-                    uri: newURL.absoluteString
+                    mediaType: self.detectMimeType(finalURL),
+                    name: finalURL.lastPathComponent,
+                    uri: finalURL.absoluteString
                 )
 
                 results.append(result);
@@ -74,11 +96,13 @@ class Chooser : CDVPlugin {
 		}
     }
 
+	// Function to handle the getFiles command from JavaScript
 	@objc(getFiles:)
 	func getFiles(command: CDVInvokedUrlCommand) {
 		self.commandCallback = command.callbackId
 
 		let accept = command.arguments.first as! String
+        let allowMultipleSelection = command.arguments.count > 1 ? command.arguments[1] as! Bool: false
 		let mimeTypes = accept.components(separatedBy: ",")
 
 		let utis = mimeTypes.map { (mimeType: String) -> String in
@@ -114,7 +138,7 @@ class Chooser : CDVPlugin {
 			return kUTTypeData as String
 		}
 
-		self.callPicker(utis: utis)
+        self.callPicker(utis: utis, allowMultipleSelection: allowMultipleSelection)
 	}
 
 	func send (_ message: String, _ status: CDVCommandStatus = CDVCommandStatus_OK) {

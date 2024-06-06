@@ -46,12 +46,12 @@ public class Chooser extends CordovaPlugin {
 
     private CallbackContext callback;
 
-    public void chooseFile(CallbackContext callbackContext, String accept) {
+    public void chooseFile(CallbackContext callbackContext, String accept, Boolean allowMultipleSelection) {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*");
         intent.putExtra(Intent.EXTRA_MIME_TYPES, accept.split(","));
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultipleSelection);
         intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
 
         Intent chooser = Intent.createChooser(intent, "Select File");
@@ -67,7 +67,7 @@ public class Chooser extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
         try {
             if (action.equals(Chooser.ACTION_OPEN)) {
-                this.chooseFile(callbackContext, args.getString(0));
+                this.chooseFile(callbackContext, args.getString(0), args.getBoolean(1));
                 return true;
             }
         } catch (JSONException err) {
