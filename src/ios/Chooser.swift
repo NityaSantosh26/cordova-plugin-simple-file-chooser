@@ -42,12 +42,23 @@ class Chooser : CDVPlugin {
 	}
     
 	// Moves the file to tmp directory whose contents can be purged by OS when app is inactive
-    func moveFileToTMP(at srcURL: URL, to destURL: URL) throws {
-        let fileManager = FileManager.default;
+	func moveFileToTMP(at srcURL: URL) throws -> URL {
+        let fileManager = FileManager.default
+        let destDirectory = NSTemporaryDirectory()
+        
+        let originalName = srcURL.deletingPathExtension().lastPathComponent
+        let ext = srcURL.pathExtension
+        let timeStamp = Int(Date().timeIntervalSince1970)
+        let uniqueFileName = "\(originalName)_\(timeStamp).\(ext)"
+        
+        let destURL = URL(fileURLWithPath: destDirectory).appendingPathComponent(uniqueFileName)
+        
         try fileManager.moveItem(at: srcURL, to: destURL)
+        
+        return destURL
     }
 
-    func documentWasSelected (urls: [URL]) {
+	func documentWasSelected (urls: [URL]) {
 		var error: NSError?
         let coordinator = NSFileCoordinator();
         var results: [FileInfo] = [];
@@ -58,17 +69,10 @@ class Chooser : CDVPlugin {
                 error: &error
             ) { newURL in
                 var finalURL = newURL
-                
-				//Gets the destination directory using the existing directory
-                let destDirectory = newURL.deletingLastPathComponent().deletingLastPathComponent()
-                // destination URL to move the file
-				let destURL = destDirectory.appendingPathComponent(newURL.lastPathComponent)
-                    
                 do {
-                    try moveFileToTMP(at: newURL, to: destURL)
-                    finalURL = destURL
+                    finalURL = try self.moveFileToTMP(at: newURL)
                 } catch {
-                    self.sendError("Failed to moved file: \(error.localizedDescription)")
+                    self.sendError("Failed to move file: \(error.localizedDescription)")
                 }
                 
                 let result = FileInfo(
